@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Задачник — мини-CRM</title>
+<!-- iPhone: «Добавить на экран Домой» как приложение -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Задачник">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1419">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230f1419'/%3E%3Crect x='38' y='44' width='104' height='16' rx='8' fill='%234f9dff'/%3E%3Crect x='38' y='82' width='104' height='16' rx='8' fill='%23ff9f0a'/%3E%3Crect x='38' y='120' width='66' height='16' rx='8' fill='%2334c759'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a212b; --panel2:#222c38; --line:#2c3845;
+    --text:#e7edf3; --muted:#8b9bad; --accent:#4f9dff; --accent2:#3a7fd6;
+    --green:#34c759; --red:#ff453a; --orange:#ff9f0a; --purple:#bf5af2;
+    --shadow:0 4px 18px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg); color:var(--text); min-height:100vh;
+  }
+  header{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:14px 22px; background:var(--panel); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20;
+  }
+  header h1{font-size:19px; margin:0; font-weight:700; letter-spacing:.3px}
+  header h1 .dot{color:var(--accent)}
+  .spacer{flex:1}
+  .btn{
+    background:var(--accent); color:#fff; border:none; border-radius:9px;
+    padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer;
+    transition:.15s; white-space:nowrap;
+  }
+  .btn:hover{background:var(--accent2)}
+  .btn.ghost{background:transparent; border:1px solid var(--line); color:var(--text)}
+  .btn.ghost:hover{background:var(--panel2)}
+  .btn.danger{background:transparent; border:1px solid var(--red); color:var(--red)}
+  .btn.danger:hover{background:rgba(255,69,58,.12)}
+  .rate-box,.month-box{
+    display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted);
+    background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:6px 11px;
+  }
+  .rate-box input{
+    width:72px; background:transparent; border:none; color:var(--text);
+    font-size:14px; font-weight:600; text-align:right; outline:none;
+  }
+  .month-box input{
+    background:transparent; border:none; color:var(--text); font-size:13px;
+    font-weight:600; outline:none; color-scheme:dark;
+  }
+  .sync{
+    font-size:12px; display:inline-flex; align-items:center; gap:5px; color:var(--muted);
+    background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:6px 10px; max-width:230px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .sync.ok{color:#7ee29a; border-color:rgba(52,199,89,.4)}
+  .sync.off{color:#ffce85; border-color:rgba(255,159,10,.4)}
+  .banner{
+    background:rgba(255,159,10,.1); color:#ffce85; border-bottom:1px solid var(--line);
+    padding:9px 22px; font-size:13px; line-height:1.4;
+  }
+
+  /* Summary bar */
+  .summary{
+    display:flex; gap:14px; flex-wrap:wrap; padding:14px 22px;
+    background:var(--panel); border-bottom:1px solid var(--line);
+  }
+  .stat{
+    background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+    padding:11px 18px; min-width:150px;
+  }
+  .stat .label{font-size:12px; color:var(--muted); margin-bottom:4px}
+  .stat .value{font-size:22px; font-weight:700}
+  .stat.money .value{color:var(--green)}
+  .stat.warn .value{color:var(--orange)}
+  .stat.over .value{color:var(--red)}
+
+  /* Board */
+  .board{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px;
+    padding:18px 22px; align-items:start;
+  }
+  @media(max-width:980px){ .board{grid-template-columns:1fr 1fr} }
+  @media(max-width:560px){ .board{grid-template-columns:1fr} }
+  .col{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    display:flex; flex-direction:column; min-height:120px;
+  }
+  .col-head{
+    display:flex; align-items:center; gap:9px; padding:13px 15px;
+    border-bottom:1px solid var(--line); font-weight:700; font-size:14px;
+    position:sticky; top:64px;
+  }
+  .col-head .mark{width:10px; height:10px; border-radius:50%}
+  .col-head .count{
+    margin-left:auto; font-size:12px; color:var(--muted); font-weight:600;
+    background:var(--panel2); border-radius:20px; padding:2px 9px;
+  }
+  .col.new   .mark{background:var(--accent)}
+  .col.work  .mark{background:var(--orange)}
+  .col.hold  .mark{background:var(--purple)}
+  .col.done  .mark{background:var(--green)}
+  .col-body{padding:11px; display:flex; flex-direction:column; gap:11px; min-height:60px}
+  .col-body.drag-over{background:rgba(79,157,255,.07); border-radius:0 0 14px 14px}
+
+  /* Card */
+  .card{
+    background:var(--panel2); border:1px solid var(--line); border-radius:11px;
+    padding:12px 13px; cursor:grab; transition:.15s; box-shadow:var(--shadow);
+    position:relative;
+  }
+  .card:hover{border-color:#3a4858; transform:translateY(-1px)}
+  .card.dragging{opacity:.5}
+  .card.overdue{border-color:var(--red); box-shadow:0 0 0 1px var(--red) inset}
+  .card.stale{border-color:var(--orange); box-shadow:0 0 0 1px rgba(255,159,10,.5) inset}
+  .chip.stale{background:rgba(255,159,10,.16); color:#ffce85}
+  .card .title{font-size:14px; font-weight:600; margin-bottom:7px; word-break:break-word; line-height:1.35}
+  .card .desc{font-size:12px; color:var(--muted); margin-bottom:9px; white-space:pre-wrap; word-break:break-word}
+  .card .meta{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+  .chip{
+    font-size:11px; font-weight:600; border-radius:7px; padding:3px 8px;
+    background:rgba(255,255,255,.06); color:var(--text);
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .chip.hours{background:rgba(79,157,255,.15); color:#9cc6ff}
+  .chip.cost{background:rgba(52,199,89,.15); color:#7ee29a}
+  .chip.date{background:rgba(255,255,255,.06); color:var(--muted)}
+  .chip.date.over{background:rgba(255,69,58,.18); color:#ff8b82}
+  .chip.date.soon{background:rgba(255,159,10,.16); color:#ffce85}
+  .card .move{
+    display:flex; gap:6px; margin-top:10px; opacity:0; transition:.15s;
+  }
+  .card:hover .move{opacity:1}
+  .card .move button{
+    flex:1; background:var(--panel); border:1px solid var(--line); color:var(--muted);
+    border-radius:7px; padding:5px; font-size:12px; cursor:pointer;
+  }
+  .card .move button:hover{color:var(--text); border-color:var(--accent)}
+  .card .move button.edit{color:var(--accent)}
+  .empty-hint{color:var(--muted); font-size:12px; text-align:center; padding:14px 0; opacity:.6}
+
+  /* На тач-экранах (телефон/планшет) нет наведения — показываем кнопки всегда и крупнее */
+  @media(hover:none){
+    .card .move{opacity:1; margin-top:12px}
+    .card .move button{padding:11px; font-size:16px}
+    .card{cursor:default}
+    header{padding-top:max(14px, env(safe-area-inset-top))}
+  }
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px);
+    display:none; align-items:flex-start; justify-content:center; z-index:50; padding:40px 16px; overflow:auto;
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    width:100%; max-width:460px; padding:24px; box-shadow:var(--shadow);
+  }
+  .modal h2{margin:0 0 18px; font-size:18px}
+  .field{margin-bottom:15px}
+  .field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600}
+  .field input,.field textarea,.field select{
+    width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:9px; padding:10px 12px; font-size:14px; outline:none; font-family:inherit;
+    color-scheme:dark;
+  }
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent)}
+  .field textarea{resize:vertical; min-height:64px}
+  .row2{display:flex; gap:12px}
+  .row2 .field{flex:1}
+  .hours-edit{display:flex; align-items:center; gap:8px}
+  .hours-edit input{text-align:center}
+  .hours-edit button{
+    width:38px; height:40px; flex:none; border-radius:9px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--text); font-size:18px; cursor:pointer;
+  }
+  .hours-edit button:hover{border-color:var(--accent); color:var(--accent)}
+  .cost-preview{font-size:13px; color:var(--green); font-weight:600; margin-top:6px}
+  .modal-actions{display:flex; gap:10px; margin-top:22px}
+  .modal-actions .btn{flex:1}
+  .auth-hint{color:var(--muted); font-size:13px; margin:0 0 16px; line-height:1.45}
+  .auth-err{color:var(--red); font-size:13px; min-height:18px; margin-bottom:6px}
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+    background:var(--panel2); border:1px solid var(--line); border-radius:10px;
+    padding:12px 20px; font-size:14px; box-shadow:var(--shadow); z-index:60;
+    opacity:0; pointer-events:none; transition:.25s;
+  }
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Задачник <span class="dot">•</span> мини-CRM</h1>
+  <div class="rate-box">Ставка <input id="rate" type="number" min="0" step="50" value="1500"> ₽/час</div>
+  <div class="month-box">Итоги за <input id="month" type="month"></div>
+  <span id="syncBadge" class="sync" style="display:none"></span>
+  <div class="spacer"></div>
+  <button class="btn ghost" id="notifyBtn" title="Включить браузерные уведомления">🔔 Уведомления</button>
+  <button class="btn ghost" id="exportBtn" title="Сохранить все задачи в файл (бэкап)">⬇ Экспорт</button>
+  <button class="btn ghost" id="importBtn" title="Загрузить задачи из файла">⬆ Импорт</button>
+  <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+  <button class="btn" id="addBtn">+ Новая задача</button>
+  <button class="btn ghost" id="logoutBtn" style="display:none" title="Выйти из аккаунта">Выйти</button>
+</header>
+
+<div id="localBanner" class="banner" style="display:none">
+  💾 Локальный режим — задачи хранятся только в этом браузере, без синхронизации.
+  Чтобы включить облако и доступ с телефона, впиши ключи Firebase в начало раздела &lt;script&gt; (см. инструкцию).
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="board" id="board"></div>
+
+<!-- Modal: задача -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Новая задача</h2>
+    <div class="field">
+      <label>Название</label>
+      <input id="f_title" placeholder="Что нужно сделать">
+    </div>
+    <div class="field">
+      <label>Описание / ТЗ</label>
+      <textarea id="f_desc" placeholder="Детали, ссылки, заметки"></textarea>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Часы <span style="opacity:.6">(можно добавлять при росте ТЗ)</span></label>
+        <div class="hours-edit">
+          <button type="button" id="h_minus">−</button>
+          <input id="f_hours" type="number" min="0" step="0.5" value="1">
+          <button type="button" id="h_plus">+</button>
+        </div>
+        <div class="cost-preview" id="costPreview"></div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Дедлайн</label>
+        <input id="f_deadline" type="date">
+      </div>
+      <div class="field">
+        <label>Статус</label>
+        <select id="f_status">
+          <option value="new">Новая</option>
+          <option value="work">В работе</option>
+          <option value="hold">Отложена</option>
+          <option value="done">Завершённая</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" id="deleteBtn" style="flex:0 0 auto; display:none">Удалить</button>
+      <button class="btn ghost" id="cancelBtn">Отмена</button>
+      <button class="btn" id="saveBtn">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: вход (только в облачном режиме) -->
+<div class="overlay" id="authOverlay">
+  <div class="modal">
+    <h2>Вход в задачник</h2>
+    <p class="auth-hint">Войди одним логином на телефоне и на компьютере — задачи будут синхронизироваться между устройствами.</p>
+    <div class="field"><label>Почта</label><input id="a_email" type="email" autocomplete="username" placeholder="you@mail.com"></div>
+    <div class="field"><label>Пароль</label><input id="a_pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <div class="auth-err" id="a_err"></div>
+    <div class="modal-actions"><button class="btn" id="a_login">Войти</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+"use strict";
+
+/* ============================================================
+   НАСТРОЙКА ОБЛАКА (Firebase) — для синхронизации с телефоном.
+   Вставь сюда ключи из своего проекта Firebase (см. инструкцию).
+   Пока поля пустые — приложение работает локально, без синхронизации.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBmJXgTiUCmaWd1Mrxy2C4eFKriYhlIuyo",
+  authDomain: "task1488-a3a67.firebaseapp.com",
+  projectId: "task1488-a3a67",
+  storageBucket: "task1488-a3a67.firebasestorage.app",
+  messagingSenderId: "218917630759",
+  appId: "1:218917630759:web:0956ff3588cab0977a6f02"
+};
+const CLOUD = !!firebaseConfig.apiKey;
+/* ============================================================ */
+
+const STORE_KEY = "zadachnik_v1";
+const RATE_KEY  = "zadachnik_rate";
+const STATUSES = [
+  {id:"new",  name:"Новая",       cls:"new"},
+  {id:"work", name:"В работе",    cls:"work"},
+  {id:"hold", name:"Отложена",    cls:"hold"},
+  {id:"done", name:"Завершённая", cls:"done"},
+];
+const STATUS_ORDER = STATUSES.map(s=>s.id);
+const STALE_DAYS = 7; // дольше скольких дней в одном статусе — «долго висит»
+
+let tasks = [];
+let rate = 1500;
+let editingId = null;
+
+// Firebase (заполняется в initCloud)
+let fb = null, auth = null, db = null, uid = null;
+let unsubTasks = null, unsubSettings = null;
+
+const $ = id => document.getElementById(id);
+
+// ---------- helpers ----------
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtMoney(n){ return Math.round(n).toLocaleString("ru-RU")+" ₽"; }
+function fmtHours(h){ return (Number.isInteger(h)? h : h.toFixed(1))+" ч"; }
+function fmtDate(d){
+  if(!d) return "";
+  const dt = new Date(d+"T00:00:00");
+  return dt.toLocaleDateString("ru-RU",{day:"2-digit",month:"short"});
+}
+function daysLeft(d){
+  if(!d) return null;
+  const today = new Date(todayStr()+"T00:00:00");
+  const dl = new Date(d+"T00:00:00");
+  return Math.round((dl-today)/86400000);
+}
+function isOverdue(t){ return t.status!=="done" && t.deadline && daysLeft(t.deadline) < 0; }
+function daysInStatus(t){
+  const since = new Date((t.statusChangedAt||t.createdAt||todayStr())+"T00:00:00");
+  const today = new Date(todayStr()+"T00:00:00");
+  return Math.round((today-since)/86400000);
+}
+function isStale(t){ return t.status!=="done" && daysInStatus(t) > STALE_DAYS; }
+function newId(){ return "t"+Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+function migrate(list){
+  list.forEach(t=>{
+    if(!t.statusChangedAt) t.statusChangedAt = t.createdAt || todayStr();
+    if(t.createdTs==null) t.createdTs = t.createdAt ? Date.parse(t.createdAt+"T00:00:00") : Date.now();
+  });
+}
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+// ---------- хранилище: локальное ----------
+function loadLocal(){
+  try{ tasks = JSON.parse(localStorage.getItem(STORE_KEY)) || []; }catch(e){ tasks = []; }
+  migrate(tasks);
+  const r = parseFloat(localStorage.getItem(RATE_KEY));
+  if(!isNaN(r)) rate = r;
+}
+function saveLocal(){ localStorage.setItem(STORE_KEY, JSON.stringify(tasks)); }
+function saveRateLocal(){ localStorage.setItem(RATE_KEY, String(rate)); }
+
+// ---------- хранилище: маршрутизация (облако или локально) ----------
+function taskRef(id){ return fb.doc(db,"users",uid,"tasks",id); }
+function settingsRef(){ return fb.doc(db,"users",uid,"meta","settings"); }
+function serialize(t){
+  return {
+    id:t.id, title:t.title, desc:t.desc||"", hours:t.hours,
+    deadline:t.deadline||null, status:t.status,
+    createdAt:t.createdAt||todayStr(), createdTs:t.createdTs||Date.now(),
+    statusChangedAt:t.statusChangedAt||todayStr(), completedAt:t.completedAt||null
+  };
+}
+function persistTask(t){
+  if(CLOUD && uid){ fb.setDoc(taskRef(t.id), serialize(t)).catch(e=>toast("Ошибка сохранения: "+(e.code||e))); }
+  else { saveLocal(); }
+}
+function persistDelete(id){
+  if(CLOUD && uid){ fb.deleteDoc(taskRef(id)).catch(e=>toast("Ошибка удаления: "+(e.code||e))); }
+  else { saveLocal(); }
+}
+function persistRate(){
+  if(CLOUD && uid){ fb.setDoc(settingsRef(), {rate}, {merge:true}).catch(()=>{}); }
+  else { saveRateLocal(); }
+}
+
+// ---------- render ----------
+function render(){ renderSummary(); renderBoard(); updateNotifyBtn(); }
+
+function renderSummary(){
+  const monthVal = $("month").value; // YYYY-MM
+  let earnedHours=0, earnedMoney=0, doneCount=0;
+  tasks.forEach(t=>{
+    if(t.status==="done"){
+      const cm = (t.completedAt||"").slice(0,7);
+      if(cm===monthVal){ earnedHours+=t.hours; earnedMoney+=t.hours*rate; doneCount++; }
+    }
+  });
+  const active = tasks.filter(t=>t.status!=="done");
+  const activeHours = active.reduce((s,t)=>s+t.hours,0);
+  const overdue = tasks.filter(isOverdue).length;
+  const stale = tasks.filter(t=>isStale(t) && !isOverdue(t)).length;
+
+  $("summary").innerHTML = `
+    <div class="stat money">
+      <div class="label">Заработано за месяц (${doneCount} зад.)</div>
+      <div class="value">${fmtMoney(earnedMoney)}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Часов завершено за месяц</div>
+      <div class="value">${fmtHours(earnedHours)}</div>
+    </div>
+    <div class="stat warn">
+      <div class="label">В работе сейчас (${active.length} зад.)</div>
+      <div class="value">${fmtMoney(activeHours*rate)}</div>
+    </div>
+    <div class="stat ${overdue? 'over':''}">
+      <div class="label">Просрочено</div>
+      <div class="value">${overdue}</div>
+    </div>
+    <div class="stat ${stale? 'warn':''}">
+      <div class="label">Висят дольше ${STALE_DAYS} дн.</div>
+      <div class="value">${stale}</div>
+    </div>`;
+}
+
+function renderBoard(){
+  const board = $("board");
+  board.innerHTML = "";
+  STATUSES.forEach(st=>{
+    const list = tasks.filter(t=>t.status===st.id)
+                      .sort((a,b)=>(b.createdTs||0)-(a.createdTs||0));
+    const col = document.createElement("div");
+    col.className = "col "+st.cls;
+    col.innerHTML = `
+      <div class="col-head"><span class="mark"></span>${st.name}<span class="count">${list.length}</span></div>
+      <div class="col-body" data-status="${st.id}"></div>`;
+    const body = col.querySelector(".col-body");
+
+    body.addEventListener("dragover", e=>{ e.preventDefault(); body.classList.add("drag-over"); });
+    body.addEventListener("dragleave", ()=> body.classList.remove("drag-over"));
+    body.addEventListener("drop", e=>{
+      e.preventDefault(); body.classList.remove("drag-over");
+      const id = e.dataTransfer.getData("text/plain");
+      moveTask(id, st.id);
+    });
+
+    if(list.length===0){
+      const hint=document.createElement("div");
+      hint.className="empty-hint"; hint.textContent="Пусто";
+      body.appendChild(hint);
+    }
+    list.forEach(t=> body.appendChild(makeCard(t)));
+    board.appendChild(col);
+  });
+}
+
+function makeCard(t){
+  const card = document.createElement("div");
+  const stale = isStale(t);
+  card.className = "card" + (isOverdue(t)? " overdue":"") + (stale && !isOverdue(t)? " stale":"");
+  card.draggable = true;
+
+  const dl = daysLeft(t.deadline);
+  let dateCls="date", dateTxt="";
+  if(t.deadline){
+    dateTxt = "📅 "+fmtDate(t.deadline);
+    if(t.status!=="done"){
+      if(dl<0){ dateCls="date over"; dateTxt = "⚠ просрочено "+(-dl)+" дн."; }
+      else if(dl===0){ dateCls="date soon"; dateTxt="📅 сегодня"; }
+      else if(dl<=2){ dateCls="date soon"; dateTxt="📅 через "+dl+" дн."; }
+    }
+  }
+
+  const idx = STATUS_ORDER.indexOf(t.status);
+  const prevSt = idx>0 ? STATUSES[idx-1] : null;
+  const nextSt = idx<STATUSES.length-1 ? STATUSES[idx+1] : null;
+
+  card.innerHTML = `
+    <div class="title">${escapeHtml(t.title)}</div>
+    ${t.desc? `<div class="desc">${escapeHtml(t.desc)}</div>`:""}
+    <div class="meta">
+      <span class="chip hours">⏱ ${fmtHours(t.hours)}</span>
+      <span class="chip cost">${fmtMoney(t.hours*rate)}</span>
+      ${dateTxt? `<span class="chip ${dateCls}">${dateTxt}</span>`:""}
+      ${stale? `<span class="chip stale">🐌 висит ${daysInStatus(t)} дн.</span>`:""}
+    </div>
+    <div class="move">
+      ${prevSt? `<button class="prev" title="← ${prevSt.name}">←</button>`:""}
+      <button class="edit" title="Редактировать">✎</button>
+      ${nextSt? `<button class="next" title="${nextSt.name} →">→</button>`:""}
+    </div>`;
+
+  card.addEventListener("dragstart", e=>{
+    e.dataTransfer.setData("text/plain", t.id);
+    card.classList.add("dragging");
+  });
+  card.addEventListener("dragend", ()=> card.classList.remove("dragging"));
+  card.querySelector(".edit").addEventListener("click", e=>{ e.stopPropagation(); openEdit(t.id); });
+  const pv=card.querySelector(".prev"); if(pv) pv.addEventListener("click",e=>{e.stopPropagation(); moveTask(t.id, prevSt.id);});
+  const nx=card.querySelector(".next"); if(nx) nx.addEventListener("click",e=>{e.stopPropagation(); moveTask(t.id, nextSt.id);});
+  return card;
+}
+
+// ---------- действия ----------
+function moveTask(id, status){
+  const t = tasks.find(x=>x.id===id);
+  if(!t || t.status===status) return;
+  t.status = status;
+  t.statusChangedAt = todayStr();
+  t.completedAt = status==="done"? todayStr() : null;
+  render(); persistTask(t);
+}
+
+function openNew(){
+  editingId = null;
+  $("modalTitle").textContent="Новая задача";
+  $("f_title").value=""; $("f_desc").value=""; $("f_hours").value="1";
+  $("f_deadline").value=""; $("f_status").value="new";
+  $("deleteBtn").style.display="none";
+  updateCostPreview(); showModal();
+}
+function openEdit(id){
+  const t = tasks.find(x=>x.id===id); if(!t) return;
+  editingId = id;
+  $("modalTitle").textContent="Редактировать задачу";
+  $("f_title").value=t.title; $("f_desc").value=t.desc||""; $("f_hours").value=t.hours;
+  $("f_deadline").value=t.deadline||""; $("f_status").value=t.status;
+  $("deleteBtn").style.display="inline-block";
+  updateCostPreview(); showModal();
+}
+function saveTask(){
+  const title = $("f_title").value.trim();
+  if(!title){ toast("Введите название задачи"); return; }
+  const hours = Math.max(0, parseFloat($("f_hours").value)||0);
+  const desc = $("f_desc").value.trim();
+  const deadline = $("f_deadline").value || null;
+  const status = $("f_status").value;
+
+  let t;
+  if(editingId){
+    t = tasks.find(x=>x.id===editingId); if(!t) return;
+    const wasDone = t.status==="done";
+    if(t.status!==status) t.statusChangedAt=todayStr();
+    t.title=title; t.desc=desc; t.hours=hours; t.deadline=deadline; t.status=status;
+    if(status==="done" && !wasDone) t.completedAt=todayStr();
+    if(status!=="done") t.completedAt=null;
+  } else {
+    t = { id:newId(), title, desc, hours, deadline, status,
+          createdAt:todayStr(), createdTs:Date.now(), statusChangedAt:todayStr(),
+          completedAt: status==="done"? todayStr():null };
+    tasks.unshift(t);
+  }
+  hideModal(); render(); persistTask(t); toast("Сохранено");
+}
+function deleteTask(){
+  if(!editingId) return;
+  if(!confirm("Удалить эту задачу?")) return;
+  const id = editingId;
+  tasks = tasks.filter(t=>t.id!==id);
+  hideModal(); render(); persistDelete(id); toast("Задача удалена");
+}
+
+// ---------- экспорт / импорт ----------
+function exportData(){
+  const payload = { app:"zadachnik", version:1, exportedAt:todayStr(), rate, tasks };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "задачник-бэкап-"+todayStr()+".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast("Бэкап сохранён");
+}
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      const incoming = Array.isArray(data) ? data : data.tasks;
+      if(!Array.isArray(incoming)) throw new Error("нет задач");
+      if(!confirm("Заменить текущие задачи ("+tasks.length+" шт.) на задачи из файла ("+incoming.length+" шт.)?")) return;
+      migrate(incoming);
+      applyImport(incoming, (data && data.rate) ? data.rate : null);
+    }catch(e){ toast("Не удалось прочитать файл"); }
+  };
+  reader.readAsText(file);
+}
+async function applyImport(incoming, newRate){
+  if(CLOUD && uid){
+    const have = tasks.map(t=>t.id);
+    const keep = new Set(incoming.map(t=>t.id));
+    try{
+      for(const id of have){ if(!keep.has(id)) await fb.deleteDoc(taskRef(id)); }
+      for(const t of incoming){ await fb.setDoc(taskRef(t.id), serialize(t)); }
+      if(newRate){ rate=newRate; $("rate").value=rate; await fb.setDoc(settingsRef(), {rate}, {merge:true}); }
+      toast("Загружено в облако: "+incoming.length);
+    }catch(e){ toast("Ошибка импорта: "+(e.code||e)); }
+  } else {
+    tasks = incoming;
+    if(newRate){ rate=newRate; $("rate").value=rate; saveRateLocal(); }
+    saveLocal(); render();
+    toast("Загружено задач: "+incoming.length);
+  }
+}
+
+// ---------- modal ----------
+function showModal(){ $("overlay").classList.add("show"); $("f_title").focus(); }
+function hideModal(){ $("overlay").classList.remove("show"); }
+function updateCostPreview(){
+  const h = parseFloat($("f_hours").value)||0;
+  $("costPreview").textContent = "Стоимость: "+fmtMoney(h*rate);
+}
+
+// ---------- toast ----------
+let toastTimer;
+function toast(msg){
+  const el=$("toast");
+  el.textContent=msg; el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove("show"),2600);
+}
+
+// ---------- уведомления ----------
+function updateNotifyBtn(){
+  const btn=$("notifyBtn");
+  if(!("Notification" in window)){ btn.style.display="none"; return; }
+  btn.textContent = Notification.permission==="granted" ? "🔔 Уведомления вкл." : "🔔 Включить уведомления";
+}
+function requestNotify(){
+  if(!("Notification" in window)){ toast("Браузер не поддерживает уведомления"); return; }
+  Notification.requestPermission().then(()=>{ updateNotifyBtn(); checkOverdue(true); });
+}
+let lastNotified = {};
+function checkOverdue(force){
+  const overdue = tasks.filter(isOverdue);
+  document.title = overdue.length? `(${overdue.length}) Задачник — просрочено!` : "Задачник — мини-CRM";
+  if(!("Notification" in window) || Notification.permission!=="granted") return;
+  overdue.forEach(t=>{
+    const key = t.id+"|"+t.deadline;
+    const stamp = todayStr();
+    if(force || lastNotified[key]!==stamp){
+      lastNotified[key]=stamp;
+      try{ new Notification("⚠ Просрочена задача", { body: t.title+" — дедлайн "+fmtDate(t.deadline) }); }catch(e){}
+    }
+  });
+}
+
+// ---------- облако (Firebase) ----------
+async function initCloud(){
+  const [appMod, authMod, fsMod] = await Promise.all([
+    import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"),
+    import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"),
+    import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"),
+  ]);
+  const app = appMod.initializeApp(firebaseConfig);
+  try{
+    db = fsMod.initializeFirestore(app, {
+      localCache: fsMod.persistentLocalCache({ tabManager: fsMod.persistentMultipleTabManager() })
+    });
+  }catch(e){ db = fsMod.getFirestore(app); } // запасной вариант без офлайн-кэша
+  auth = authMod.getAuth(app);
+  fb = {
+    setDoc: fsMod.setDoc, deleteDoc: fsMod.deleteDoc, doc: fsMod.doc,
+    collection: fsMod.collection, onSnapshot: fsMod.onSnapshot,
+    signIn: authMod.signInWithEmailAndPassword, signOut: authMod.signOut,
+    onAuth: authMod.onAuthStateChanged,
+  };
+  await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+  fb.onAuth(auth, user=>{ if(user){ uid=user.uid; onSignedIn(user); } else { uid=null; onSignedOut(); } });
+}
+function onSignedIn(user){
+  $("authOverlay").classList.remove("show");
+  $("logoutBtn").style.display="";
+  setSyncBadge(false, user.email);
+  if(unsubTasks) unsubTasks();
+  unsubTasks = fb.onSnapshot(fb.collection(db,"users",uid,"tasks"),
+    snap=>{
+      tasks = snap.docs.map(d=>d.data()); migrate(tasks);
+      render(); checkOverdue(false);
+      setSyncBadge(snap.metadata.fromCache, user.email);
+    },
+    err=> toast("Нет доступа к базе: "+(err.code||err))
+  );
+  if(unsubSettings) unsubSettings();
+  unsubSettings = fb.onSnapshot(settingsRef(), s=>{
+    if(s.exists() && typeof s.data().rate==="number"){ rate=s.data().rate; $("rate").value=rate; render(); }
+  });
+}
+function onSignedOut(){
+  if(unsubTasks){ unsubTasks(); unsubTasks=null; }
+  if(unsubSettings){ unsubSettings(); unsubSettings=null; }
+  tasks=[]; render();
+  $("logoutBtn").style.display="none";
+  $("syncBadge").style.display="none";
+  $("authOverlay").classList.add("show");
+}
+function setSyncBadge(fromCache, email){
+  const b=$("syncBadge"); b.style.display="";
+  if(fromCache){ b.className="sync off"; b.textContent="⚠ офлайн — сохранится при сети"; }
+  else { b.className="sync ok"; b.textContent="☁ "+(email||"синхронизировано"); }
+}
+async function doLogin(){
+  const email=$("a_email").value.trim(), pass=$("a_pass").value, err=$("a_err");
+  err.textContent="";
+  if(!email||!pass){ err.textContent="Введите почту и пароль"; return; }
+  try{ await fb.signIn(auth, email, pass); $("a_pass").value=""; }
+  catch(e){
+    const m={ "auth/invalid-credential":"Неверный логин или пароль",
+              "auth/wrong-password":"Неверный пароль",
+              "auth/user-not-found":"Пользователь не найден",
+              "auth/invalid-email":"Неверный формат почты",
+              "auth/network-request-failed":"Нет интернета" };
+    err.textContent = m[e.code] || ("Ошибка входа: "+e.code);
+  }
+}
+function doLogout(){ if(fb&&auth) fb.signOut(auth); }
+
+// ---------- init ----------
+function init(){
+  $("month").value = todayStr().slice(0,7);
+
+  $("addBtn").addEventListener("click", openNew);
+  $("cancelBtn").addEventListener("click", hideModal);
+  $("saveBtn").addEventListener("click", saveTask);
+  $("deleteBtn").addEventListener("click", deleteTask);
+  $("notifyBtn").addEventListener("click", requestNotify);
+  $("exportBtn").addEventListener("click", exportData);
+  $("importBtn").addEventListener("click", ()=> $("importFile").click());
+  $("importFile").addEventListener("change", e=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
+  $("overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") hideModal(); });
+
+  $("rate").addEventListener("input", e=>{ rate=parseFloat(e.target.value)||0; persistRate(); updateCostPreview(); render(); });
+  $("month").addEventListener("change", renderSummary);
+  $("f_hours").addEventListener("input", updateCostPreview);
+  $("h_plus").addEventListener("click", ()=>{ const i=$("f_hours"); i.value=(parseFloat(i.value)||0)+0.5; updateCostPreview(); });
+  $("h_minus").addEventListener("click", ()=>{ const i=$("f_hours"); i.value=Math.max(0,(parseFloat(i.value)||0)-0.5); updateCostPreview(); });
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape") hideModal(); });
+
+  $("a_login").addEventListener("click", doLogin);
+  $("a_pass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+  $("logoutBtn").addEventListener("click", doLogout);
+}
+
+init();
+
+if(CLOUD){
+  $("authOverlay").classList.add("show");
+  initCloud().catch(e=>{ console.error(e); toast("Не удалось подключиться к облаку"); });
+} else {
+  $("localBanner").style.display="";
+  loadLocal();
+  $("rate").value = rate;
+  render(); checkOverdue(false);
+}
+setInterval(()=>{ render(); checkOverdue(false); }, 30*60*1000);
+</script>
+</body>
+</html>
