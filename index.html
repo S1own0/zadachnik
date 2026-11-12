@@ -199,7 +199,7 @@
 <header>
   <h1>Задачник <span class="dot">•</span> мини-CRM</h1>
   <div class="rate-box">Ставка <input id="rate" type="number" min="0" step="50" value="1500"> ₽/час</div>
-  <div class="month-box">Итоги за <input id="month" type="month"></div>
+  <div class="month-box">Месяц <input id="month" type="month"></div>
   <span id="syncBadge" class="sync" style="display:none"></span>
   <div class="spacer"></div>
   <button class="btn ghost" id="notifyBtn" title="Включить браузерные уведомления">🔔 Уведомления</button>
@@ -429,9 +429,14 @@ function renderSummary(){
 function renderBoard(){
   const board = $("board");
   board.innerHTML = "";
+  const monthVal = $("month").value; // YYYY-MM
   STATUSES.forEach(st=>{
-    const list = tasks.filter(t=>t.status===st.id)
-                      .sort((a,b)=>(b.createdTs||0)-(a.createdTs||0));
+    const list = st.id==="done"
+      // завершённые — только закрытые в выбранном месяце, свежие сверху
+      ? tasks.filter(t=>t.status==="done" && (t.completedAt||"").slice(0,7)===monthVal)
+             .sort((a,b)=>(b.completedAt||"").localeCompare(a.completedAt||"") || (b.createdTs||0)-(a.createdTs||0))
+      : tasks.filter(t=>t.status===st.id)
+             .sort((a,b)=>(b.createdTs||0)-(a.createdTs||0));
     const col = document.createElement("div");
     col.className = "col "+st.cls;
     col.innerHTML = `
@@ -484,7 +489,8 @@ function makeCard(t){
     <div class="meta">
       <span class="chip hours">⏱ ${fmtHours(t.hours)}</span>
       <span class="chip cost">${fmtMoney(t.hours*rate)}</span>
-      ${dateTxt? `<span class="chip ${dateCls}">${dateTxt}</span>`:""}
+      ${t.status==="done" && t.completedAt? `<span class="chip date">✅ ${fmtDate(t.completedAt)}</span>`:""}
+      ${dateTxt && t.status!=="done"? `<span class="chip ${dateCls}">${dateTxt}</span>`:""}
       ${stale? `<span class="chip stale">🐌 висит ${daysInStatus(t)} дн.</span>`:""}
     </div>
     <div class="move">
@@ -733,7 +739,7 @@ function init(){
   $("overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") hideModal(); });
 
   $("rate").addEventListener("input", e=>{ rate=parseFloat(e.target.value)||0; persistRate(); updateCostPreview(); render(); });
-  $("month").addEventListener("change", renderSummary);
+  $("month").addEventListener("change", render);
   $("f_hours").addEventListener("input", updateCostPreview);
   $("h_plus").addEventListener("click", ()=>{ const i=$("f_hours"); i.value=(parseFloat(i.value)||0)+0.5; updateCostPreview(); });
   $("h_minus").addEventListener("click", ()=>{ const i=$("f_hours"); i.value=Math.max(0,(parseFloat(i.value)||0)-0.5); updateCostPreview(); });
